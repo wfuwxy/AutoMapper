@@ -7,8 +7,11 @@ using System.Data;
 
 using System.Linq;
 using System.Reflection;
+using AutoMapper.Configuration;
 using AutoMapper.Internal;
 using AutoMapper.Mappers;
+using MapperRegistry = AutoMapper.Mappers.MapperRegistry;
+using Castle.Core;
 
 namespace AutoMapper
 {
@@ -22,13 +25,21 @@ namespace AutoMapper
 		private readonly IDictionary<TypePair, TypeMap> _typeMapCache = new Dictionary<TypePair, TypeMap>();
 		private readonly IDictionary<string, FormatterExpression> _formatterProfiles = new Dictionary<string, FormatterExpression>();
 		private Func<Type, object> _serviceCtor = ObjectCreator.CreateObject;
-	    private List<string> _globalIgnore;
+        private readonly List<string> _globalIgnore = new List<string>();
 
 	    public ConfigurationStore(ITypeMapFactory typeMapFactory, IEnumerable<IObjectMapper> mappers)
 		{
 		    _typeMapFactory = typeMapFactory;
 		    _mappers = mappers;
-            _globalIgnore = new List<string>();
+		}
+
+	    public ConfigurationStore(MapperConfiguration configuration)
+            : this(new TypeMapFactory(), MapperRegistry.AllMappers())
+		{
+            configuration.TypeMaps.ForEach(tm =>
+            {
+                _typeMaps.Add(tm.Build());
+            });
 		}
 
 		public event EventHandler<TypeMapCreatedEventArgs> TypeMapCreated;

@@ -10,6 +10,8 @@ namespace AutoMapper.UnitTests.Configuration
         public class when_configuring_two_flat_types
         {
             static MapperConfiguration _configuration;
+            static ConfigurationStore _store;
+            static MappingEngine _engine;
 
             public class Source
             {
@@ -31,12 +33,19 @@ namespace AutoMapper.UnitTests.Configuration
 
             Because of = () =>
             {
-
+                _store = _configuration.Build();
+                _engine = new MappingEngine(_store);
             };
 
             It should_record_the_type_map = () =>
             {
-                //_configuration.TypeMaps.Count().ShouldEqual(1);
+                _configuration.TypeMaps.Count().ShouldEqual(1);
+            };
+
+            It should_build_the_type_maps = () =>
+            {
+                _store.ShouldNotBeNull();
+                _store.GetAllTypeMaps().Length.ShouldEqual(1);
             };
         }
     }

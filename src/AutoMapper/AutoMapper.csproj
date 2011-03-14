@@ -94,7 +94,10 @@
     <Compile Include="AutoMapperMappingException.cs" />
     <Compile Include="Configuration\MapperConfiguration.cs" />
     <Compile Include="Configuration\MapperRegistry.cs" />
+    <Compile Include="Configuration\MappingExpression.cs" />
+    <Compile Include="Configuration\MemberConfigurationExpression.cs" />
     <Compile Include="Configuration\TypeMapConfiguration.cs" />
+    <Compile Include="Configuration\TypeMemberConfiguration.cs" />
     <Compile Include="IMappingAction.cs" />
     <Compile Include="IMappingEngineRunner.cs" />
     <Compile Include="INamingConvention.cs" />
