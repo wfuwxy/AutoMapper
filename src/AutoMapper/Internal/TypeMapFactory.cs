@@ -25,7 +25,7 @@ namespace AutoMapper
 
                 if (MapDestinationPropertyToSource(members, sourceTypeInfo, destProperty.Name, options))
                 {
-                    var resolvers = members.Select(mi => mi.ToMemberGetter()).Cast<IValueResolver>();
+                    var resolvers = members.Select(mi => mi.ToMemberGetter());
                     var destPropertyAccessor = destProperty.ToMemberAccessor();
                     typeMap.AddPropertyMap(destPropertyAccessor, resolvers);
                 }

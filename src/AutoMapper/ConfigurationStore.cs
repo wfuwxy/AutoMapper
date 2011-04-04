@@ -38,8 +38,9 @@ namespace AutoMapper
 		{
             configuration.TypeMaps.ForEach(tm =>
             {
-                _typeMaps.Add(tm.Build());
+                _typeMaps.Add(tm.Build(_typeMapFactory, this));
             });
+	        AllowNullDestinationValues = configuration.AllowNullDestinationValues;
 		}
 
 		public event EventHandler<TypeMapCreatedEventArgs> TypeMapCreated;

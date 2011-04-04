@@ -28,5 +28,10 @@ namespace AutoMapper.Configuration
         {
             _configurationActions.ForEach(action => action(mapperConfiguration));
         }
+
+        public void NullDestinationValues(bool isAllowed)
+        {
+            _configurationActions.Add(cfg => cfg.AllowNullDestinationValues = isAllowed);
+        }
     }
 }

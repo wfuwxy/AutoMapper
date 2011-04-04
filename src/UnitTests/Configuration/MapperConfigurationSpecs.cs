@@ -47,6 +47,11 @@ namespace AutoMapper.UnitTests.Configuration
                 _store.ShouldNotBeNull();
                 _store.GetAllTypeMaps().Length.ShouldEqual(1);
             };
+
+            It should_include_all_member_information = () =>
+            {
+                _store.GetAllTypeMaps()[0].GetPropertyMaps().ShouldBeOfLength(1);
+            };
         }
     }
 }

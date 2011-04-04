@@ -12,9 +12,13 @@ namespace AutoMapper.Configuration
         {
             _configActions.Add(cfg =>
             {
-                var expr = new MemberConfigurationExpression<TSource>();
+                var expr = new MemberConfigurationExpression<TSource>(destinationMember, memberOptions);
 
+                var memberCfg = new TypeMemberConfiguration();
 
+                expr.Apply(memberCfg);
+
+                cfg.AddMemberConfguration(memberCfg);
             });
 
             return this;
@@ -82,7 +86,10 @@ namespace AutoMapper.Configuration
 
         public void Apply(TypeMapConfiguration typeMapConfiguration)
         {
-            
+            foreach (var configAction in _configActions)
+            {
+                configAction(typeMapConfiguration);
+            }
         }
     }
 }

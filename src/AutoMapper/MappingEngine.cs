@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using AutoMapper.Configuration;
 using AutoMapper.Internal;
 using AutoMapper.Mappers;
 using Castle.DynamicProxy;
@@ -15,7 +16,12 @@ namespace AutoMapper
 		private readonly IObjectMapper[] _mappers;
 		private readonly IDictionary<TypePair, IObjectMapper> _objectMapperCache = new Dictionary<TypePair, IObjectMapper>();
 
-		public MappingEngine(IConfigurationProvider configurationProvider)
+        public MappingEngine(MapperConfiguration configuration)
+            : this(configuration.Build())
+	    {
+	    }
+
+	    public MappingEngine(IConfigurationProvider configurationProvider)
 		{
 			_configurationProvider = configurationProvider;
 			_mappers = configurationProvider.GetMappers();

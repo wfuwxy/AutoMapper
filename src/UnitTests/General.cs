@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AutoMapper.Configuration;
 using NBehave.Spec.NUnit;
 using NUnit.Framework;
 using System.Linq;
@@ -10,7 +11,9 @@ namespace AutoMapper.UnitTests
 	{
 		public class When_mapping_dto_with_a_missing_match : NonValidatingSpecBase
 		{
-			public class ModelObject
+		    private ConfigurationStore _store;
+
+		    public class ModelObject
 			{
 			}
 
@@ -21,13 +24,18 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+			    _store = new ConfigurationStore(new MapperConfiguration(r =>
+			    {
+			        r.CreateMap<ModelObject, ModelDto>();
+			    }));
 			}
 
-			[Test]
+		    [Test]
 			public void Should_map_successfully()
 			{
-				ModelDto dto = Mapper.Map<ModelObject, ModelDto>(new ModelObject());
+			    var engine = new MappingEngine(_store);
+
+                ModelDto dto = engine.Map<ModelObject, ModelDto>(new ModelObject());
 
 				dto.ShouldNotBeNull();
 			}
@@ -47,10 +55,15 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.AllowNullDestinationValues = false;
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var store = new ConfigurationStore(new MapperConfiguration(r =>
+                {
+                    r.NullDestinationValues(false);
+                    r.CreateMap<ModelObject, ModelDto>();
+                }));
 
-				_result = Mapper.Map<ModelObject, ModelDto>(null);
+			    var engine = new MappingEngine(store);
+                
+                _result = engine.Map<ModelObject, ModelDto>(null);
 			}
 
 			[Test]
@@ -80,14 +93,19 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var store = new ConfigurationStore(new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                }));
+
+                var engine = new MappingEngine(store);
 
 				var model = new ModelObject
 				{
 					SomeValue = "Some value"
 				};
 
-				_result = Mapper.Map<ModelObject, ModelDto>(model);
+                _result = engine.Map<ModelObject, ModelDto>(model);
 			}
 
 			[Test]
@@ -118,9 +136,14 @@ namespace AutoMapper.UnitTests
 					NotAString = 5
 				};
 
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var store = new ConfigurationStore(new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                }));
 
-				_result = Mapper.Map<ModelObject, ModelDto>(model);
+                var engine = new MappingEngine(store);
+
+                _result = engine.Map<ModelObject, ModelDto>(model);
 			}
 
 			[Test]
@@ -151,9 +174,14 @@ namespace AutoMapper.UnitTests
 			{
 				var model = new ModelObject();
 
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
 
-				_result = Mapper.Map<ModelObject, ModelDto>(model);
+                var engine = new MappingEngine(config.Build());
+
+                _result = engine.Map<ModelObject, ModelDto>(model);
 			}
 
 			[Test]
@@ -167,7 +195,9 @@ namespace AutoMapper.UnitTests
 
 		public class When_mapping_a_dto_with_mismatched_property_types : NonValidatingSpecBase
 		{
-			public class ModelObject
+		    private MappingEngine _engine;
+
+		    public class ModelObject
 			{
 				public string NullableDate { get; set; }
 			}
@@ -179,16 +209,21 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+			    var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
+
+			    _engine = new MappingEngine(config.Build());
 			}
 
-			[Test]
+		    [Test]
 			public void Should_throw_a_mapping_exception()
 			{
 				var model = new ModelObject();
 				model.NullableDate = new DateTime(2007, 8, 4).ToString();
-				
-				typeof(AutoMapperMappingException).ShouldBeThrownBy(() => Mapper.Map<ModelObject, ModelDto>(model));
+
+                typeof(AutoMapperMappingException).ShouldBeThrownBy(() => _engine.Map<ModelObject, ModelDto>(model));
 			}
 		}
 
@@ -209,10 +244,15 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
+
+			    var engine = new MappingEngine(config.Build());
 
 				_model = new[] { new ModelObject { SomeValue = "First" }, new ModelObject { SomeValue = "Second" } };
-				_dto = (ModelDto[])Mapper.Map(_model, typeof(ModelObject[]), typeof(ModelDto[]));
+                _dto = (ModelDto[])engine.Map(_model, typeof(ModelObject[]), typeof(ModelDto[]));
 			}
 
 			[Test]
@@ -246,10 +286,15 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
+
+                var engine = new MappingEngine(config.Build());
 
 				_model = new List<ModelObject> { new ModelObject { SomeValue = "First" }, new ModelObject { SomeValue = "Second" } };
-				_dto = (ModelDto[])Mapper.Map(_model, typeof(ModelObject[]), typeof(ModelDto[]));
+				_dto = (ModelDto[])engine.Map(_model, typeof(ModelObject[]), typeof(ModelDto[]));
 			}
 
 			[Test]
@@ -270,8 +315,9 @@ namespace AutoMapper.UnitTests
 		{
 			private ModelObject _model;
 			private ModelDto _dto;
+		    private MappingEngine _engine;
 
-			public class ModelObject
+		    public class ModelObject
 			{
 				public int? SomeValue { get; set; }
 				public int? SomeNullableValue { get; set; }
@@ -285,13 +331,18 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+			    var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
+
+			    _engine = new MappingEngine(config.Build());
 			}
 
-            protected override void Because_of()
+		    protected override void Because_of()
             {
                 _model = new ModelObject { SomeValue = 2 };
-                _dto = Mapper.Map<ModelObject, ModelDto>(_model);
+                _dto = _engine.Map<ModelObject, ModelDto>(_model);
             }
 
 			[Test]
@@ -311,8 +362,9 @@ namespace AutoMapper.UnitTests
 		{
 			private ModelObject _model;
 			private ModelDto _dto;
+		    private MappingEngine _engine;
 
-			public class ModelObject
+		    public class ModelObject
 			{
 				public int SomeValue { get; set; }
 				public int SomeOtherValue { get; set; }
@@ -326,14 +378,19 @@ namespace AutoMapper.UnitTests
 
 			protected override void Establish_context()
 			{
-				Mapper.CreateMap<ModelObject, ModelDto>();
+                var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>();
+                });
+
+                _engine = new MappingEngine(config.Build());
 
 				_model = new ModelObject { SomeValue = 2 };
 			}
 
 			protected override void Because_of()
 			{
-				_dto = Mapper.Map<ModelObject, ModelDto>(_model);
+				_dto = _engine.Map<ModelObject, ModelDto>(_model);
 			}
 
 			[Test]
@@ -354,6 +411,7 @@ namespace AutoMapper.UnitTests
         {
             private ModelObject _model;
             private ModelDto _dto;
+            private MappingEngine _engine;
 
             public class ModelObject
             {
@@ -369,15 +427,20 @@ namespace AutoMapper.UnitTests
 
             protected override void Establish_context()
             {
-                Mapper.CreateMap<ModelObject, ModelDto>()
-                    .ForMember(dest => dest.SomeOtherValue2, opt => opt.MapFrom(src => src.SomeOtherValue));
+                var config = new MapperConfiguration(r =>
+                {
+                    r.CreateMap<ModelObject, ModelDto>()
+                        .ForMember(dest => dest.SomeOtherValue2, opt => opt.MapFrom(src => src.SomeOtherValue));
+                });
+
+                _engine = new MappingEngine(config);
 
                 _model = new ModelObject();
             }
 
             protected override void Because_of()
             {
-                _dto = Mapper.Map<ModelObject, ModelDto>(_model);
+                _dto = _engine.Map<ModelObject, ModelDto>(_model);
             }
 
             [Test]

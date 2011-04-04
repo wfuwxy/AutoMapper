@@ -21,6 +21,8 @@ namespace AutoMapper.Configuration
             get { return _typeMaps; }
         }
 
+        public bool AllowNullDestinationValues { get; set; }
+
         public void AddTypeMap(TypeMapConfiguration typeMap)
         {
             _typeMaps.Add(typeMap);

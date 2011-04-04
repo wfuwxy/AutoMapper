@@ -1,9 +1,21 @@
 using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace AutoMapper.Configuration
 {
     public class MemberConfigurationExpression<TSource> : IMemberConfigurationExpression<TSource>
     {
+        private readonly LambdaExpression _destinationMember;
+        private readonly Action<IMemberConfigurationExpression<TSource>> _memberOptions;
+        private readonly IList<Action<TypeMemberConfiguration<TSource>>> _memberActions = new List<Action<TypeMemberConfiguration>>();
+
+        public MemberConfigurationExpression(LambdaExpression destinationMember, Action<IMemberConfigurationExpression<TSource>> memberOptions)
+        {
+            _destinationMember = destinationMember;
+            _memberOptions = memberOptions;
+        }
+
         public void SkipFormatter<TValueFormatter>() where TValueFormatter : IValueFormatter
         {
             throw new NotImplementedException();
@@ -46,7 +58,7 @@ namespace AutoMapper.Configuration
 
         public void MapFrom<TMember>(Func<TSource, TMember> sourceMember)
         {
-            throw new NotImplementedException();
+            _memberActions.Add(cfg => cfg.MapFrom(sourceMember));
         }
 
         public void Ignore()
@@ -82,6 +94,11 @@ namespace AutoMapper.Configuration
         public void Condition(Func<ResolutionContext, bool> condition)
         {
             throw new NotImplementedException();
+        }
+
+        public void Apply(TypeMemberConfiguration typeMemberConfiguration)
+        {
+            _memberOptions(this);
         }
     }
 }
