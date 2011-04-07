@@ -12,7 +12,9 @@ namespace AutoMapper.Configuration
         {
             _configActions.Add(cfg =>
             {
-                var expr = new MemberConfigurationExpression<TSource>(destinationMember, memberOptions);
+                var expr = new MemberConfigurationExpression<TSource>(destinationMember);
+
+                memberOptions(expr);
 
                 var memberCfg = new TypeMemberConfiguration();
 

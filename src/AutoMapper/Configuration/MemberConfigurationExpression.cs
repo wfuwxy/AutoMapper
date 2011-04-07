@@ -6,14 +6,11 @@ namespace AutoMapper.Configuration
 {
     public class MemberConfigurationExpression<TSource> : IMemberConfigurationExpression<TSource>
     {
-        private readonly LambdaExpression _destinationMember;
-        private readonly Action<IMemberConfigurationExpression<TSource>> _memberOptions;
-        private readonly IList<Action<TypeMemberConfiguration<TSource>>> _memberActions = new List<Action<TypeMemberConfiguration>>();
+        private readonly IList<Action<TypeMemberConfiguration>> _memberActions = new List<Action<TypeMemberConfiguration>>();
 
-        public MemberConfigurationExpression(LambdaExpression destinationMember, Action<IMemberConfigurationExpression<TSource>> memberOptions)
+        public MemberConfigurationExpression(LambdaExpression destinationMember)
         {
-            _destinationMember = destinationMember;
-            _memberOptions = memberOptions;
+            _memberActions.Add(cfg => cfg.DestinationMember(destinationMember));
         }
 
         public void SkipFormatter<TValueFormatter>() where TValueFormatter : IValueFormatter
@@ -98,7 +95,10 @@ namespace AutoMapper.Configuration
 
         public void Apply(TypeMemberConfiguration typeMemberConfiguration)
         {
-            _memberOptions(this);
+            foreach (var memberAction in _memberActions)
+            {
+                memberAction(typeMemberConfiguration);
+            }
         }
     }
 }
