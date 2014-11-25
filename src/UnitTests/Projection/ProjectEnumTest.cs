@@ -12,6 +12,7 @@ namespace AutoMapper.UnitTests.Projection
         public ProjectEnumTest()
         {
             Mapper.CreateMap<Customer, CustomerDto>();
+            Mapper.CreateMap<Customer, OtherCustomerDto>();
             Mapper.CreateMap<CustomerType, string>().ProjectUsing(ct => ct.ToString().ToUpper());
 
             Mapper.CreateMap<Customer, CustomerViewModel>();
@@ -35,6 +36,16 @@ namespace AutoMapper.UnitTests.Projection
             var customers = new[] { new Customer() { FirstName = "Bill", LastName = "White", CustomerType = CustomerType.Vip } }.AsQueryable();
 
             var projected = customers.Project().To<CustomerViewModel>();
+            projected.ShouldNotBeNull();
+            Assert.Equal(customers.Single().CustomerType.ToString(), projected.Single().CustomerType.ToString());
+        }
+
+        [Fact]
+        public void ProjectingEnumToOtherEnum()
+        {
+            var customers = new[] { new Customer() { FirstName = "Bill", LastName = "White", CustomerType = CustomerType.Vip } }.AsQueryable();
+
+            var projected = customers.Project().To<OtherCustomerDto>();
             projected.ShouldNotBeNull();
             Assert.Equal(customers.Single().CustomerType.ToString(), projected.Single().CustomerType.ToString());
         }
@@ -77,7 +88,22 @@ namespace AutoMapper.UnitTests.Projection
             public string CustomerType { get; set; }
         }
 
+        public class OtherCustomerDto
+        {
+            public string FirstName { get; set; }
+
+            public string LastName { get; set; }
+
+            public CustomerTypeDto CustomerType { get; set; }
+        }
+
         public enum CustomerType
+        {
+            Regular,
+            Vip,
+        }
+
+        public enum CustomerTypeDto
         {
             Regular,
             Vip,
