@@ -195,8 +195,7 @@ namespace AutoMapper.Tests
 		public void ShouldMapEnumUsingCustomResolver()
 		{
             var config = new MapperConfiguration(cfg => cfg.CreateMap<Order, OrderDtoWithOwnStatus>()
-				.ForMember(dto => dto.Status, options => options
-				                                         	.ResolveUsing<DtoStatusValueResolver>()));
+				.ForMember(dto => dto.Status, options => options.ResolveUsing<DtoStatusValueResolver>()));
 
 			var order = new Order
 				{
@@ -213,9 +212,7 @@ namespace AutoMapper.Tests
 		public void ShouldMapEnumUsingGenericEnumResolver()
 		{
             var config = new MapperConfiguration(cfg => cfg.CreateMap<Order, OrderDtoWithOwnStatus>()
-				.ForMember(dto => dto.Status, options => options
-				                                         	.ResolveUsing<EnumValueResolver<Status, StatusForDto>>()
-				                                         	.FromMember(m => m.Status)));
+				.ForMember(dto => dto.Status, options => options.ResolveUsing<EnumValueResolver<Status, StatusForDto>, Status>(m => m.Status)));
 
 			var order = new Order
 				{
@@ -296,17 +293,17 @@ namespace AutoMapper.Tests
 			public StatusForDto? Status { get; set; }
 		}
 
-		public class DtoStatusValueResolver : IValueResolver
+		public class DtoStatusValueResolver : IValueResolver<Order, object, StatusForDto>
 		{
-			public object Resolve(object source, ResolutionContext context)
+			public StatusForDto Resolve(Order source, object d, StatusForDto dest, ResolutionContext context)
 			{
-				return ((Order)source).Status;
+				return context.Mapper.Map<StatusForDto>(source.Status);
 			}
 		}
 
-		public class EnumValueResolver<TInputEnum, TOutputEnum> : IValueResolver
+		public class EnumValueResolver<TInputEnum, TOutputEnum> : IMemberValueResolver<object, object, TInputEnum, TOutputEnum>
 		{
-			public object Resolve(object source, ResolutionContext context)
+			public TOutputEnum Resolve(object s, object d, TInputEnum source, TOutputEnum dest, ResolutionContext context)
 			{
 				return ((TOutputEnum)Enum.Parse(typeof(TOutputEnum), Enum.GetName(typeof(TInputEnum), source), false));
 			}
@@ -343,7 +340,40 @@ namespace AutoMapper.Tests
 			dest.Values.ShouldEqual(default(EnumValues));
 		}
 	}
-	public class When_mapping_from_a_null_object_with_a_nullable_enum : AutoMapperSpecBase
+
+    public class When_mapping_to_a_nullable_flags_enum : AutoMapperSpecBase
+    {
+        protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg =>
+        {
+            cfg.CreateMap<SourceClass, DestinationClass>();
+        });
+
+        [Flags]
+        public enum EnumValues
+        {
+            One, Two = 2, Three = 4
+        }
+
+        public class SourceClass
+        {
+            public EnumValues Values { get; set; }
+        }
+
+        public class DestinationClass
+        {
+            public EnumValues? Values { get; set; }
+        }
+
+        [Fact]
+        public void Should_set_the_target_enum_to_the_default_value()
+        {
+            var values = EnumValues.Two | EnumValues.Three;
+            var dest = Mapper.Map<SourceClass, DestinationClass>(new SourceClass { Values = values });
+            dest.Values.ShouldEqual(values);
+        }
+    }
+
+    public class When_mapping_from_a_null_object_with_a_nullable_enum : AutoMapperSpecBase
 	{
 	    protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg =>
 	    {

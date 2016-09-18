@@ -8,49 +8,87 @@ namespace AutoMapper
     /// </summary>
     /// <typeparam name="TSource">Source type for this member</typeparam>
     /// <typeparam name="TMember">Type for this member</typeparam>
-    public interface IMemberConfigurationExpression<TSource, TMember>
+    /// <typeparam name="TDestination">Destination type for this map</typeparam>
+    public interface IMemberConfigurationExpression<TSource, out TDestination, TMember>
     {
         /// <summary>
         /// Substitute a custom value when the source member resolves as null
         /// </summary>
         /// <param name="nullSubstitute">Value to use</param>
-        void NullSubstitute(TMember nullSubstitute);
+        void NullSubstitute(object nullSubstitute);
 
         /// <summary>
         /// Resolve destination member using a custom value resolver
         /// </summary>
         /// <typeparam name="TValueResolver">Value resolver type</typeparam>
         /// <returns>Value resolver configuration options</returns>
-        IResolverConfigurationExpression<TSource, TValueResolver> ResolveUsing<TValueResolver>() where TValueResolver : IValueResolver;
+        void ResolveUsing<TValueResolver>() 
+            where TValueResolver : IValueResolver<TSource, TDestination, TMember>;
 
         /// <summary>
-        /// Resolve destination member using a custom value resolver. Used when the value resolver is not known at compile-time
+        /// Resolve destination member using a custom value resolver from a source member
         /// </summary>
-        /// <param name="valueResolverType">Value resolver type</param>
+        /// <typeparam name="TValueResolver">Value resolver type</typeparam>
+        /// <typeparam name="TSourceMember">Source member to supply</typeparam>
         /// <returns>Value resolver configuration options</returns>
-        IResolverConfigurationExpression<TSource> ResolveUsing(Type valueResolverType);
+        void ResolveUsing<TValueResolver, TSourceMember>(Expression<Func<TSource, TSourceMember>> sourceMember) 
+            where TValueResolver : IMemberValueResolver<TSource, TDestination, TSourceMember, TMember>;
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver from a source member
+        /// </summary>
+        /// <typeparam name="TValueResolver">Value resolver type</typeparam>
+        /// <typeparam name="TSourceMember">Source member to supply</typeparam>
+        /// <param name="sourceMemberName">Source member name</param>
+        /// <returns>Value resolver configuration options</returns>
+        void ResolveUsing<TValueResolver, TSourceMember>(string sourceMemberName) 
+            where TValueResolver : IMemberValueResolver<TSource, TDestination, TSourceMember, TMember>;
 
         /// <summary>
         /// Resolve destination member using a custom value resolver instance
         /// </summary>
         /// <param name="valueResolver">Value resolver instance to use</param>
         /// <returns>Resolution expression</returns>
-        IResolutionExpression<TSource> ResolveUsing(IValueResolver valueResolver);
+        void ResolveUsing(IValueResolver<TSource, TDestination, TMember> valueResolver);
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver instance
+        /// </summary>
+        /// <param name="valueResolver">Value resolver instance to use</param>
+        /// <param name="sourceMember">Source member to supply to value resolver</param>
+        /// <returns>Resolution expression</returns>
+        void ResolveUsing<TSourceMember>(IMemberValueResolver<TSource, TDestination, TSourceMember, TMember> valueResolver, Expression<Func<TSource, TSourceMember>> sourceMember);
 
         /// <summary>
         /// Resolve destination member using a custom value resolver callback. Used instead of MapFrom when not simply redirecting a source member
         /// This method cannot be used in conjunction with LINQ query projection
         /// </summary>
         /// <param name="resolver">Callback function to resolve against source type</param>
-        void ResolveUsing<TSourceMember>(Func<TSource, TSourceMember> resolver);
+        void ResolveUsing<TResult>(Func<TSource, TResult> resolver);
 
         /// <summary>
         /// Resolve destination member using a custom value resolver callback. Used instead of MapFrom when not simply redirecting a source member
-        /// Access both the source object and current resolution context for additional mapping, context items and parent objects
+        /// Access both the source object and destination member for additional mapping, context items
         /// This method cannot be used in conjunction with LINQ query projection
         /// </summary>
         /// <param name="resolver">Callback function to resolve against source type</param>
-        void ResolveUsing<TSourceMember>(Func<TSource, ResolutionContext, TSourceMember> resolver);
+        void ResolveUsing<TResult>(Func<TSource, TDestination, TResult> resolver);
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver callback. Used instead of MapFrom when not simply redirecting a source member
+        /// Access both the source object and destination member for additional mapping, context items
+        /// This method cannot be used in conjunction with LINQ query projection
+        /// </summary>
+        /// <param name="resolver">Callback function to resolve against source type</param>
+        void ResolveUsing<TResult>(Func<TSource, TDestination, TMember, TResult> resolver);
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver callback. Used instead of MapFrom when not simply redirecting a source member
+        /// Access both the source object and current resolution context for additional mapping, context items
+        /// This method cannot be used in conjunction with LINQ query projection
+        /// </summary>
+        /// <param name="resolver">Callback function to resolve against source type</param>
+        void ResolveUsing<TResult>(Func<TSource, TDestination, TMember, ResolutionContext, TResult> resolver);
 
         /// <summary>
         /// Specify the source member to map from. Can only reference a member on the <typeparamref name="TSource"/> type
@@ -73,6 +111,11 @@ namespace AutoMapper
         /// Ignore this member for configuration validation and skip during mapping
         /// </summary>
         void Ignore();
+
+        /// <summary>
+        /// Allow this member to be null. This prevents generating a check condition for it.
+        /// </summary>
+        void AllowNull();
 
         /// <summary>
         /// Supply a custom mapping order instead of what the .NET runtime returns
@@ -98,22 +141,28 @@ namespace AutoMapper
         void UseValue<TValue>(TValue value);
 
         /// <summary>
-        /// Use a custom value
+        /// Conditionally map this member against the source, destination, source and destination members
         /// </summary>
-        /// <param name="value">Value to use</param>
-        void UseValue(object value);
+        /// <param name="condition">Condition to evaluate using the source object</param>
+        void Condition(Func<TSource, TDestination, TMember, TMember, ResolutionContext, bool> condition);
 
         /// <summary>
         /// Conditionally map this member
         /// </summary>
         /// <param name="condition">Condition to evaluate using the source object</param>
-        void Condition(Func<TSource, object, TMember, ResolutionContext, bool> condition);
+        void Condition(Func<TSource, TDestination, TMember, TMember, bool> condition);
 
         /// <summary>
         /// Conditionally map this member
         /// </summary>
         /// <param name="condition">Condition to evaluate using the source object</param>
-        void Condition(Func<TSource, object, TMember, bool> condition);
+        void Condition(Func<TSource, TDestination, TMember, bool> condition);
+       
+        /// <summary>
+        /// Conditionally map this member
+        /// </summary>
+        /// <param name="condition">Condition to evaluate using the source object</param>
+        void Condition(Func<TSource, TDestination, bool> condition);
        
         /// <summary>
         /// Conditionally map this member
@@ -142,7 +191,29 @@ namespace AutoMapper
     /// <summary>
     /// Configuration options for an individual member
     /// </summary>
-    public interface IMemberConfigurationExpression : IMemberConfigurationExpression<object, object>
+    public interface IMemberConfigurationExpression : IMemberConfigurationExpression<object, object, object>
     {
+        /// <summary>
+        /// Resolve destination member using a custom value resolver. Used when the value resolver is not known at compile-time
+        /// </summary>
+        /// <param name="valueResolverType">Value resolver type</param>
+        /// <returns>Value resolver configuration options</returns>
+        void ResolveUsing(Type valueResolverType);
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver. Used when the value resolver is not known at compile-time
+        /// </summary>
+        /// <param name="valueResolverType">Value resolver type</param>
+        /// <param name="memberName">Member to supply to value resolver</param>
+        /// <returns>Value resolver configuration options</returns>
+        void ResolveUsing(Type valueResolverType, string memberName);
+
+        /// <summary>
+        /// Resolve destination member using a custom value resolver instance
+        /// </summary>
+        /// <param name="valueResolver">Value resolver instance to use</param>
+        /// <param name="memberName">Source member to supply to value resolver</param>
+        /// <returns>Resolution expression</returns>
+        void ResolveUsing<TSource, TDestination, TSourceMember, TDestMember>(IMemberValueResolver<TSource, TDestination, TSourceMember, TDestMember> valueResolver, string memberName);
     }
 }

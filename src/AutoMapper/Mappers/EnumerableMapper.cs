@@ -2,12 +2,13 @@ namespace AutoMapper.Mappers
 {
     using System;
     using System.Collections;
-    using System.Reflection;
+    using System.Collections.Generic;
+    using System.Linq.Expressions;
     using Configuration;
 
-    public class EnumerableMapper : EnumerableMapperBase<IList>
+    public class EnumerableMapper : IObjectMapper
     {
-        public override bool IsMatch(TypePair context)
+        public bool IsMatch(TypePair context)
         {
             // destination type must be IEnumerable interface or a class implementing at least IList 
             return ((context.DestinationType.IsInterface() && context.DestinationType.IsEnumerableType()) ||
@@ -15,28 +16,21 @@ namespace AutoMapper.Mappers
                    && context.SourceType.IsEnumerableType();
         }
 
-        protected override void SetElementValue(IList destination, object mappedValue, int index)
+        public Expression MapExpression(TypeMapRegistry typeMapRegistry, IConfigurationProvider configurationProvider,
+            PropertyMap propertyMap, Expression sourceExpression, Expression destExpression,
+            Expression contextExpression)
         {
-            destination.Add(mappedValue);
+            var listType = typeof(List<>).MakeGenericType(TypeHelper.GetElementType(destExpression.Type));
+
+            return typeMapRegistry.MapCollectionExpression(configurationProvider, propertyMap, sourceExpression,
+                Expression.Default(listType), contextExpression, IfEditableList, typeof(List<>),
+                CollectionMapperExtensions.MapItemExpr);
         }
 
-        protected override void ClearEnumerable(IList enumerable)
+        private static Expression IfEditableList(Expression dest)
         {
-            enumerable.Clear();
-        }
-
-        protected override object GetOrCreateDestinationObject(ResolutionContext context, Type destElementType,
-            int sourceLength)
-        {
-            if (context.DestinationValue is IList && !(context.DestinationValue is Array))
-                return context.DestinationValue;
-
-            return ObjectCreator.CreateList(destElementType);
-        }
-
-        protected override IList CreateDestinationObjectBase(Type destElementType, int sourceLength)
-        {
-            return ObjectCreator.CreateList(destElementType);
+            return Expression.And(Expression.TypeIs(dest, typeof(IList)),
+                Expression.Not(Expression.TypeIs(dest, typeof(Array))));
         }
     }
 }

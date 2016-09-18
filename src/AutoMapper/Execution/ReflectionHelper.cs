@@ -10,7 +10,23 @@ namespace AutoMapper.Execution
 
     public static class ReflectionHelper
     {
-        public static object Map(ResolutionContext context, MemberInfo member, object value)
+        public static object GetDefaultValue(this ParameterInfo parameter)
+        {
+            if(parameter.DefaultValue == null && parameter.ParameterType.IsValueType())
+            {
+                return Activator.CreateInstance(parameter.ParameterType);
+            }
+            return parameter.DefaultValue;
+        }
+
+        public static object MapMember(this ResolutionContext context, MemberInfo member, object value, object destination)
+        {
+            var memberType = member.GetMemberType();
+            var destValue = member.GetMemberValue(destination);
+            return context.Mapper.Map(value, destValue, value?.GetType() ?? memberType, memberType, context);
+        }
+
+        public static object MapMember(this ResolutionContext context, MemberInfo member, object value)
         {
             var memberType = member.GetMemberType();
             return context.Mapper.Map(value, null, value?.GetType() ?? memberType, memberType, context);
@@ -141,60 +157,6 @@ namespace AutoMapper.Execution
                 return ((PropertyInfo)memberInfo).PropertyType;
             if (memberInfo is FieldInfo)
                 return ((FieldInfo)memberInfo).FieldType;
-            return null;
-        }
-
-        public static IMemberGetter ToMemberGetter(this MemberInfo accessorCandidate)
-        {
-            if (accessorCandidate?.DeclaringType.GetTypeInfo().ContainsGenericParameters ?? false)
-                return new NulloMemberGetter();
-
-            if (accessorCandidate is PropertyInfo)
-                return
-                    Activator.CreateInstance(
-                        typeof (PropertyAccessor<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberGetter;
-
-            if (accessorCandidate is FieldInfo)
-                return
-                    Activator.CreateInstance(
-                        typeof (FieldGetter<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberGetter;
-
-            if (accessorCandidate is MethodInfo)
-                return
-                    Activator.CreateInstance(
-                        typeof (MethodGetter<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberGetter;
-
-            return null;
-        }
-
-        public static IMemberAccessor ToMemberAccessor(this MemberInfo accessorCandidate)
-        {
-            if (accessorCandidate.DeclaringType.GetTypeInfo().ContainsGenericParameters)
-                return new NulloMemberAccessor();
-
-            var fieldInfo = accessorCandidate as FieldInfo;
-            if (fieldInfo != null)
-                return accessorCandidate.DeclaringType.IsValueType()
-                    ? Activator.CreateInstance(
-                        typeof(ValueTypeFieldAccessor<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberAccessor
-                    : Activator.CreateInstance(
-                        typeof (FieldAccessor<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberAccessor;
-
-            var propertyInfo = accessorCandidate as PropertyInfo;
-            if (propertyInfo != null)
-                return accessorCandidate.DeclaringType.IsValueType()
-                    ? Activator.CreateInstance(
-                        typeof (ValueTypePropertyAccessor<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberAccessor
-                    : Activator.CreateInstance(
-                        typeof (PropertyAccessor<,>).MakeGenericType(accessorCandidate.DeclaringType,
-                            accessorCandidate.GetMemberType()), accessorCandidate) as IMemberAccessor;
-
             return null;
         }
 

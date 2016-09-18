@@ -970,23 +970,23 @@ namespace AutoMapper.UnitTests
                 public string Postal { get; set; }
             }
 
-            public class StringCAPS : ValueResolver<string, string>
+            public class StringCAPS : IMemberValueResolver<object, object, string, string>
             {
-                protected override string ResolveCore(string source)
+                public string Resolve(object s, object d, string source, string dest, ResolutionContext context)
                 {
                     return source.ToUpper();
                 }
             }
 
-            public class StringLower : ValueResolver<string, string>
+            public class StringLower : IMemberValueResolver<object, object, string, string>
             {
-                protected override string ResolveCore(string source)
+                public string Resolve(object s, object d, string source, string dest, ResolutionContext context)
                 {
                     return source.ToLower();
                 }
             }
 
-            public class StringPadder : ValueResolver<string, string>
+            public class StringPadder : IMemberValueResolver<object, object, string, string>
             {
                 private readonly int _desiredLength;
 
@@ -995,7 +995,7 @@ namespace AutoMapper.UnitTests
                     _desiredLength = desiredLength;
                 }
 
-                protected override string ResolveCore(string source)
+                public string Resolve(object s, object d, string source, string dest, ResolutionContext context)
                 {
                     return source.PadLeft(_desiredLength);
                 }
@@ -1005,11 +1005,9 @@ namespace AutoMapper.UnitTests
             {
                 cfg.CreateMap(typeof (Order), typeof (OrderDTO))
                     .ForMember("CurrentState", map => map.MapFrom("Status"))
-                    .ForMember("Contact", map => map.ResolveUsing(new StringCAPS()).FromMember("Customer"))
-                    .ForMember("Tracking", map => map.ResolveUsing(typeof (StringLower)).FromMember("ShippingCode"))
-                    .ForMember("Postal",
-                        map =>
-                            map.ResolveUsing<StringPadder>().ConstructedBy(() => new StringPadder(6)).FromMember("Zip"));
+                    .ForMember("Contact", map => map.ResolveUsing(new StringCAPS(), "Customer"))
+                    .ForMember("Tracking", map => map.ResolveUsing(typeof (StringLower), "ShippingCode"))
+                    .ForMember("Postal", map => map.ResolveUsing(new StringPadder(6), "Zip"));
 
             });
 
@@ -1271,7 +1269,93 @@ namespace AutoMapper.UnitTests
 		}
 
 
-		public class When_source_members_contain_postfixes_and_prefixes : AutoMapperSpecBase
+        public class When_source_members_contain_prefixes_with_lowercase : AutoMapperSpecBase
+        {
+            private Destination _destination;
+
+            public class Source
+            {
+                public int fooValue { get; set; }
+                public int GetOtherValue()
+                {
+                    return 10;
+                }
+            }
+
+            public class Destination
+            {
+                public int Value { get; set; }
+                public int OtherValue { get; set; }
+            }
+
+            protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg =>
+            {
+                cfg.RecognizePrefixes("Foo");
+                cfg.CreateMap<Source, Destination>();
+            });
+
+            protected override void Because_of()
+            {
+                _destination = Mapper.Map<Source, Destination>(new Source { fooValue = 5 });
+            }
+
+            [Fact]
+            public void Registered_prefixes_ignored()
+            {
+                _destination.Value.ShouldEqual(5);
+            }
+
+            [Fact]
+            public void Default_prefix_included()
+            {
+                _destination.OtherValue.ShouldEqual(10);
+            }
+        }
+
+        public class When_source_members_contain_postfixes_with_lowercase : AutoMapperSpecBase
+        {
+            private Destination _destination;
+
+            public class Source
+            {
+                public int Valuefoo { get; set; }
+                public int GetOtherValue()
+                {
+                    return 10;
+                }
+            }
+
+            public class Destination
+            {
+                public int Value { get; set; }
+                public int OtherValue { get; set; }
+            }
+
+            protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg =>
+            {
+                cfg.RecognizePostfixes("Foo");
+                cfg.CreateMap<Source, Destination>();
+            });
+
+            protected override void Because_of()
+            {
+                _destination = Mapper.Map<Source, Destination>(new Source { Valuefoo = 5 });
+            }
+
+            [Fact]
+            public void Registered_prefixes_ignored()
+            {
+                _destination.Value.ShouldEqual(5);
+            }
+
+            [Fact]
+            public void Default_prefix_included()
+            {
+                _destination.OtherValue.ShouldEqual(10);
+            }
+        }
+
+        public class When_source_members_contain_postfixes_and_prefixes : AutoMapperSpecBase
 		{
 			private Destination _destination;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -7,6 +8,110 @@ using Should;
 
 namespace AutoMapper.UnitTests
 {
+    public class When_mapping_collections_with_inheritance : AutoMapperSpecBase
+    {
+        public class Source
+        {
+            public IEnumerable<SourceItem> Items { get; set; }
+        }
+        public class Destination
+        {
+            public IEnumerable<DestinationItemBase> Items { get; set; }
+        }
+        public class SourceItem
+        {
+            public int Value { get; set; }
+        }
+        public class DestinationItemBase
+        {
+            public int Value { get; set; }
+        }
+        public class SpecificDestinationItem : DestinationItemBase
+        {
+        }
+
+        protected override MapperConfiguration Configuration => new MapperConfiguration(cfg =>
+        {
+            cfg.CreateMap<SourceItem, DestinationItemBase>().As<SpecificDestinationItem>();
+            cfg.CreateMap<SourceItem, SpecificDestinationItem>();
+            cfg.CreateMap<Source, Destination>();
+        });
+    }
+
+    public class When_passing_a_not_empty_collection : AutoMapperSpecBase
+    {
+        Destination _destination = new Destination();
+
+        class Source
+        {
+            public List<SourceItem> Items { get; }
+        }
+
+        class SourceItem
+        {
+        }
+
+        class Destination
+        {
+            public List<DestinationItem> Items { get; } = new List<DestinationItem> { new DestinationItem() };
+        }
+
+        class DestinationItem
+        {
+        }
+
+        protected override MapperConfiguration Configuration => new MapperConfiguration(cfg =>
+        {
+            cfg.CreateMap<Source, Destination>();
+            cfg.CreateMap<SourceItem, DestinationItem>();
+        });
+
+        protected override void Because_of()
+        {
+            Mapper.Map(new Source(), _destination);
+        }
+
+        [Fact]
+        public void It_should_be_cleared_first()
+        {
+            _destination.Items.ShouldBeEmpty();
+        }
+    }
+
+    public class When_mapping_collections_with_structs : AutoMapperSpecBase
+    {
+        BarDTO _destination;
+
+        public struct Foo { }
+        public struct Bar
+        {
+            public IEnumerable<Foo> Foos { get; set; }
+        }
+
+        public struct FooDTO { }
+        public struct BarDTO
+        {
+            public IEnumerable<FooDTO> Foos { get; set; }
+        }
+
+        protected override MapperConfiguration Configuration => new MapperConfiguration(cfg =>
+        {
+            cfg.CreateMap<Bar, BarDTO>();
+            cfg.CreateMap<Foo, FooDTO>();
+        });
+
+        protected override void Because_of()
+        {
+            _destination = Mapper.Map<BarDTO>(new Bar { Foos = new Foo[5] });
+        }
+
+        [Fact]
+        public void Should_map_ok()
+        {
+            _destination.Foos.SequenceEqual(new FooDTO[5]).ShouldBeTrue();
+        }
+    }
+
     public class CollectionMapping
     {
         public CollectionMapping()
@@ -206,7 +311,8 @@ namespace AutoMapper.UnitTests
         {
             var config = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<MasterDto, MasterWithCollection>();
+                cfg.CreateMap<MasterDto, MasterWithCollection>()
+                    .ForMember(d => d.Details, opt => opt.UseDestinationValue());
                 cfg.CreateMap<DetailDto, Detail>();
             });
 
@@ -258,7 +364,8 @@ namespace AutoMapper.UnitTests
         {
             var config = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<MasterDto, MasterWithList>();
+                cfg.CreateMap<MasterDto, MasterWithList>()
+                    .ForMember(d => d.Details, opt => opt.UseDestinationValue());
                 cfg.CreateMap<DetailDto, Detail>();
             });
 
@@ -290,6 +397,63 @@ namespace AutoMapper.UnitTests
             var mappedCollection = config.CreateMapper().Map<NameValueCollection, NameValueCollection>(c);
 
             mappedCollection.ShouldNotBeNull();
+        }
+    }
+
+    public class When_mapping_enumerable_to_array : AutoMapperSpecBase
+    {
+        public class Source
+        {
+            public int X { get; set; }
+            public IEnumerable<SourceItem> Items { get; set; }
+        }
+
+        public class SourceItem
+        {
+            public int I { get; set; }
+        }
+
+        public class Target
+        {
+            public int X { get; set; }
+            public TargetItem[] Items { get; set; }
+        }
+
+        public class TargetItem
+        {
+            public int I { get; set; }
+        }
+
+        protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg =>
+        {
+            cfg.AllowNullCollections = true;
+
+            cfg.CreateMap<Source, Target>();
+            cfg.CreateMap<SourceItem, TargetItem>();
+        });
+
+        [Fact]
+        public void IncludedMappings()
+        {
+            var src = new Source
+            {
+                X = 5,
+                Items = new List<SourceItem>
+                {
+                    new SourceItem {I = 1},
+                    new SourceItem {I = 2},
+                    new SourceItem {I = 3}
+                }
+            };
+
+            var dest = Mapper.Map<Source, Target>(src);
+
+            src.X.ShouldEqual(dest.X);
+
+            dest.Items.Length.ShouldEqual(3);
+            dest.Items[0].I.ShouldEqual(1);
+            dest.Items[1].I.ShouldEqual(2);
+            dest.Items[2].I.ShouldEqual(3);
         }
     }
 }

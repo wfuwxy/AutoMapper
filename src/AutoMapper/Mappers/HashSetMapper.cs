@@ -1,4 +1,6 @@
-﻿namespace AutoMapper.Mappers
+﻿using System.Linq.Expressions;
+
+namespace AutoMapper.Mappers
 {
     using System;
     using System.Reflection;
@@ -8,26 +10,11 @@
 
     public class HashSetMapper : IObjectMapper
     {
-        public object Map(ResolutionContext context)
-        {
-            Type genericType = typeof (EnumerableMapper<,>);
-
-            var collectionType = context.DestinationType;
-            var elementType = TypeHelper.GetElementType(context.DestinationType);
-
-            var enumerableMapper = genericType.MakeGenericType(collectionType, elementType);
-
-            var objectMapper = (IObjectMapper) Activator.CreateInstance(enumerableMapper);
-
-            return objectMapper.Map(context);
-        }
-
         public bool IsMatch(TypePair context)
-        {
-            var isMatch = context.SourceType.IsEnumerableType() && IsSetType(context.DestinationType);
+            => context.SourceType.IsEnumerableType() && IsSetType(context.DestinationType);
 
-            return isMatch;
-        }
+        public Expression MapExpression(TypeMapRegistry typeMapRegistry, IConfigurationProvider configurationProvider, PropertyMap propertyMap, Expression sourceExpression, Expression destExpression, Expression contextExpression)
+            => typeMapRegistry.MapCollectionExpression(configurationProvider, propertyMap, sourceExpression, destExpression, contextExpression, CollectionMapperExtensions.IfNotNull, typeof(HashSet<>), CollectionMapperExtensions.MapItemExpr);
 
         private static bool IsSetType(Type type)
         {
@@ -42,42 +29,6 @@
             var isCollectionType = baseDefinitions.Any(t => t == typeof (ISet<>));
 
             return isCollectionType;
-        }
-
-
-        private class EnumerableMapper<TCollection, TElement> : EnumerableMapperBase<TCollection>
-            where TCollection : ISet<TElement>
-        {
-            public override bool IsMatch(TypePair context)
-            {
-                throw new NotImplementedException();
-            }
-
-            protected override void SetElementValue(TCollection destination, object mappedValue, int index)
-            {
-                destination.Add((TElement) mappedValue);
-            }
-
-            protected override void ClearEnumerable(TCollection enumerable)
-            {
-                enumerable.Clear();
-            }
-
-            protected override TCollection CreateDestinationObjectBase(Type destElementType, int sourceLength)
-            {
-                Object collection;
-
-                if (typeof (TCollection).IsInterface())
-                {
-                    collection = new HashSet<TElement>();
-                }
-                else
-                {
-                    collection = ObjectCreator.CreateDefaultValue(typeof (TCollection));
-                }
-
-                return (TCollection) collection;
-            }
         }
     }
 }

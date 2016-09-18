@@ -7,18 +7,20 @@ namespace AutoMapper
     public class AutoMapperConfigurationException : Exception
     {
         public TypeMapConfigErrors[] Errors { get; }
-        public ResolutionContext Context { get; }
+        public TypePair? Types { get; }
         public PropertyMap PropertyMap { get; set; }
 
         public class TypeMapConfigErrors
         {
             public TypeMap TypeMap { get; }
             public string[] UnmappedPropertyNames { get; }
+            public bool CanConstruct { get; }
 
-            public TypeMapConfigErrors(TypeMap typeMap, string[] unmappedPropertyNames)
+            public TypeMapConfigErrors(TypeMap typeMap, string[] unmappedPropertyNames, bool canConstruct)
             {
                 TypeMap = typeMap;
                 UnmappedPropertyNames = unmappedPropertyNames;
+                CanConstruct = canConstruct;
             }
         }
 
@@ -37,22 +39,22 @@ namespace AutoMapper
             Errors = errors;
         }
 
-        public AutoMapperConfigurationException(ResolutionContext context)
+        public AutoMapperConfigurationException(TypePair types)
         {
-            Context = context;
+            Types = types;
         }
 
         public override string Message
         {
             get
             {
-                if (Context != null)
+                if (Types != null)
                 {
                     var message =
                         string.Format(
                             "The following property on {0} cannot be mapped: \n\t{2}\nAdd a custom mapping expression, ignore, add a custom resolver, or modify the destination type {1}.",
-                            Context.DestinationType.FullName, Context.DestinationType.FullName,
-                            PropertyMap.DestinationProperty.Name);
+                            Types?.DestinationType.FullName, Types?.DestinationType.FullName,
+                            PropertyMap?.DestinationProperty.Name);
 
                     message += "\nContext:";
 
@@ -62,11 +64,11 @@ namespace AutoMapper
                         var configExc = exToUse as AutoMapperConfigurationException;
                         if (configExc != null)
                         { message += configExc.PropertyMap == null
-                            ? string.Format("\n\tMapping from type {1} to {0}", configExc.Context.DestinationType.FullName,
-                                configExc.Context.SourceType.FullName)
+                            ? string.Format("\n\tMapping from type {1} to {0}", configExc.Types?.DestinationType.FullName,
+                                configExc.Types?.SourceType.FullName)
                             : string.Format("\n\tMapping to property {0} from {2} to {1}",
                                 configExc.PropertyMap.DestinationProperty.Name,
-                                configExc.Context.DestinationType.FullName, configExc.Context.SourceType.FullName);
+                                configExc.Types?.DestinationType.FullName, configExc.Types?.SourceType.FullName);
                         }
 
                         exToUse = exToUse.InnerException;
@@ -78,7 +80,7 @@ namespace AutoMapper
                 {
                     var message =
                         new StringBuilder(
-                            "\nUnmapped members were found. Review the types and members below.\nAdd a custom mapping expression, ignore, add a custom resolver, or modify the source/destination type\n");
+                            "\nUnmapped members were found. Review the types and members below.\nAdd a custom mapping expression, ignore, add a custom resolver, or modify the source/destination type\nFor no matching constructor, add a no-arg ctor, add optional arguments, or map all of the constructor parameters\n");
 
                     foreach (var error in Errors)
                     {
@@ -93,10 +95,18 @@ namespace AutoMapper
                                            error.TypeMap.DestinationType.FullName + " (" +
                                            error.TypeMap.ConfiguredMemberList + " member list)");
                         message.AppendLine();
-                        message.AppendLine("Unmapped properties:");
-                        foreach (var name in error.UnmappedPropertyNames)
+
+                        if (error.UnmappedPropertyNames.Any())
                         {
-                            message.AppendLine(name);
+                            message.AppendLine("Unmapped properties:");
+                            foreach (var name in error.UnmappedPropertyNames)
+                            {
+                                message.AppendLine(name);
+                            }
+                        }
+                        if (!error.CanConstruct)
+                        {
+                            message.AppendLine("No available constructor.");
                         }
                     }
                     return message.ToString();

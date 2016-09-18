@@ -1,28 +1,15 @@
+using System.Linq;
+using System.Linq.Expressions;
+using static System.Linq.Expressions.Expression;
+
 namespace AutoMapper.Mappers
 {
-    using System;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using Configuration;
 
     public class ReadOnlyCollectionMapper : IObjectMapper
     {
-        public object Map(ResolutionContext context)
-        {
-            Type genericType = typeof (EnumerableMapper<>);
-
-            var elementType = TypeHelper.GetElementType(context.DestinationType);
-
-            var enumerableMapper = genericType.MakeGenericType(elementType);
-
-            var objectMapper = (IObjectMapper) Activator.CreateInstance(enumerableMapper);
-
-            var nullDestinationValueSoTheReadOnlyCollectionMapperWorks =
-                    new ResolutionContext(context.SourceValue, null, context.SourceType, context.DestinationType, context.TypeMap, context);
-
-            return objectMapper.Map(nullDestinationValueSoTheReadOnlyCollectionMapperWorks);
-        }
-
         public bool IsMatch(TypePair context)
         {
             if (!(context.SourceType.IsEnumerableType() && context.DestinationType.IsGenericType()))
@@ -33,38 +20,13 @@ namespace AutoMapper.Mappers
             return genericType == typeof (ReadOnlyCollection<>);
         }
 
-        #region Nested type: EnumerableMapper
-
-        private class EnumerableMapper<TElement> : EnumerableMapperBase<IList<TElement>>
+        public Expression MapExpression(TypeMapRegistry typeMapRegistry, IConfigurationProvider configurationProvider, PropertyMap propertyMap, Expression sourceExpression, Expression destExpression, Expression contextExpression)
         {
-            private readonly IList<TElement> inner = new List<TElement>();
+            var listType = typeof(List<>).MakeGenericType(TypeHelper.GetElementType(destExpression.Type));
+            var list = typeMapRegistry.MapCollectionExpression(configurationProvider, propertyMap, sourceExpression, Default(listType), contextExpression, _ => Constant(false), typeof(List<>), CollectionMapperExtensions.MapItemExpr);
+            var dest = Variable(listType, "dest");
 
-            public override bool IsMatch(TypePair context)
-            {
-                throw new NotImplementedException();
-            }
-
-            protected override void SetElementValue(IList<TElement> elements, object mappedValue, int index)
-            {
-                inner.Add((TElement) mappedValue);
-            }
-
-            protected override IList<TElement> GetEnumerableFor(object destination)
-            {
-                return inner;
-            }
-
-            protected override IList<TElement> CreateDestinationObjectBase(Type destElementType, int sourceLength)
-            {
-                throw new NotImplementedException();
-            }
-
-            protected override object CreateDestinationObject(ResolutionContext context, Type destinationElementType, int count)
-            {
-                return new ReadOnlyCollection<TElement>(inner);
-            }
+            return Block(new[] { dest }, Assign(dest, list), Condition(NotEqual(dest, Default(listType)), New(destExpression.Type.GetConstructors().First(), dest), Default(destExpression.Type)));
         }
-
-        #endregion
     }
 }

@@ -38,16 +38,6 @@ namespace AutoMapper
         TypeMap FindTypeMapFor<TSource, TDestination>();
 
         /// <summary>
-        /// Find the <see cref="TypeMap"/> for the configured source and destination type, checking the source/destination object types too
-        /// </summary>
-        /// <param name="source">Source object</param>
-        /// <param name="destination">Destination object</param>
-        /// <param name="sourceType">Configured source type</param>
-        /// <param name="destinationType">Configured destination type</param>
-        /// <returns>Type map configuration</returns>
-        TypeMap ResolveTypeMap(object source, object destination, Type sourceType, Type destinationType);
-
-        /// <summary>
         /// Resolve the <see cref="TypeMap"/> for the configured source and destination type, checking parent types
         /// </summary>
         /// <param name="sourceType">Configured source type</param>
@@ -61,15 +51,6 @@ namespace AutoMapper
         /// <param name="typePair">Type pair</param>
         /// <returns>Type map configuration</returns>
         TypeMap ResolveTypeMap(TypePair typePair);
-
-        /// <summary>
-        /// Resolve the <see cref="TypeMap"/> for the runtime and declared source types and destination type, checking parent types
-        /// </summary>
-        /// <param name="sourceRuntimeType">The runtime type of the source</param>
-        /// <param name="sourceDeclaredType">The declared type of the source</param>
-        /// <param name="destinationType">Configured destination type</param>
-        /// <returns>Type map configuration</returns>
-        TypeMap ResolveTypeMap(Type sourceRuntimeType, Type sourceDeclaredType, Type destinationType);
 
         /// <summary>
         /// Dry run all configured type maps and throw <see cref="AutoMapperConfigurationException"/> for each problem
@@ -106,17 +87,22 @@ namespace AutoMapper
         Func<Type, object> ServiceCtor { get; }
 
         /// <summary>
-        /// Allow null destination values. If false, destination objects will be created for deep object graphs.
+        /// Underlying configuration
         /// </summary>
-        bool AllowNullDestinationValues { get; }
+        IConfiguration Configuration { get; }
 
         /// <summary>
-        /// Allow null destination collections. If true, null source collections result in null destination collections.
+        /// Allows to enable null-value propagation for query mapping. 
+        /// <remarks>Some providers (such as EntityFrameworkQueryVisitor) do not work with this feature enabled!</remarks>
         /// </summary>
-        bool AllowNullCollections { get; }
+        bool EnableNullPropagationForQueryMapping { get; }
 
         IExpressionBuilder ExpressionBuilder { get; }
         IMapper CreateMapper();
         IMapper CreateMapper(Func<Type, object> serviceCtor);
+        Func<TSource, TDestination, ResolutionContext, TDestination> GetMapperFunc<TSource, TDestination>(TypePair types);
+        Delegate GetMapperFunc(MapRequest request);
+
+        Func<object, object, ResolutionContext, object> GetUntypedMapperFunc(MapRequest mapRequest);
     }
 }

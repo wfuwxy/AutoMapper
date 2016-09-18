@@ -1,3 +1,7 @@
+using System.Linq.Expressions;
+using System.Reflection;
+using AutoMapper.Execution;
+
 namespace AutoMapper.Mappers
 {
     using System;
@@ -5,17 +9,16 @@ namespace AutoMapper.Mappers
 
     public class FlagsEnumMapper : IObjectMapper
     {
-        public object Map(ResolutionContext context)
+        public static TDestination Map<TSource, TDestination>(TSource source, Func<TDestination> ifNull)
         {
-            Type enumDestType = TypeHelper.GetEnumerationType(context.DestinationType);
+            if (source == null)
+                return ifNull();
 
-            if (context.SourceValue == null)
-            {
-                return context.Mapper.CreateObject(context);
-            }
-
-            return Enum.Parse(enumDestType, context.SourceValue.ToString(), true);
+            Type enumDestType = TypeHelper.GetEnumerationType(typeof(TDestination));
+            return (TDestination)Enum.Parse(enumDestType, source.ToString(), true);
         }
+
+        private static readonly MethodInfo MapMethodInfo = typeof(FlagsEnumMapper).GetAllMethods().First(_ => _.IsStatic);
 
         public bool IsMatch(TypePair context)
         {
@@ -26,6 +29,11 @@ namespace AutoMapper.Mappers
                    && destEnumType != null
                    && sourceEnumType.GetCustomAttributes(typeof (FlagsAttribute), false).Any()
                    && destEnumType.GetCustomAttributes(typeof (FlagsAttribute), false).Any();
+        }
+
+        public Expression MapExpression(TypeMapRegistry typeMapRegistry, IConfigurationProvider configurationProvider, PropertyMap propertyMap, Expression sourceExpression, Expression destExpression, Expression contextExpression)
+        {
+            return Expression.Call(null, MapMethodInfo.MakeGenericMethod(sourceExpression.Type, destExpression.Type), sourceExpression, Expression.Constant(CollectionMapperExtensions.Constructor(destExpression.Type)));
         }
     }
 }

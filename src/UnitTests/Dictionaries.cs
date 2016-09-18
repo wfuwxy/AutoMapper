@@ -339,9 +339,7 @@ namespace AutoMapper.UnitTests
 
 				public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
 				{
-					return inner.OfType<DictionaryEntry>()
-						.Select(e => new KeyValuePair<TKey, TValue>((TKey)e.Key, (TValue)e.Value))
-						.GetEnumerator();
+				    return inner.GetEnumerator() as IEnumerator<KeyValuePair<TKey, TValue>>;
 				}
 
 				IEnumerator IEnumerable.GetEnumerator()
@@ -425,10 +423,10 @@ namespace AutoMapper.UnitTests
 
 			public class FooObject
 			{
-				public Dictionary<string, string> Values { get; set; }
+				public IDictionary<string, string> Values { get; set; }
 			}
 
-			public class DestinationValuePair
+            public class DestinationValuePair
 			{
 				public string Key { get; set; }
 				public string Value { get; set; }
@@ -464,5 +462,25 @@ namespace AutoMapper.UnitTests
 				_result.Values["Key2"].ShouldEqual("Value2");
 			}
 		}
-	}
+
+        public class When_mapping_nongeneric_type_inherited_from_dictionary : AutoMapperSpecBase
+        {
+            public class BaseClassWithDictionary
+            {
+                public DataDictionary Data { get; set; }
+            }
+
+            public class DerivedClassWithDictionary : BaseClassWithDictionary { }
+
+            public class DataDictionary : Dictionary<string, object>
+            {
+                public string GetString(string name, string @default)
+                {
+                    return null;
+                }
+            }
+
+            protected override MapperConfiguration Configuration { get; } = new MapperConfiguration(cfg => cfg.CreateMap<BaseClassWithDictionary, DerivedClassWithDictionary>());
+        }
+    }
 }

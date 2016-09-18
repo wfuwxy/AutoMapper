@@ -113,6 +113,12 @@ namespace AutoMapper
         bool AllowNullCollections { get; set; }
 
         /// <summary>
+        /// Allows to enable null-value propagation for query mapping. 
+        /// <remarks>Some providers (such as EntityFrameworkQueryVisitor) do not work with this feature enabled!</remarks>
+        /// </summary>
+        bool EnableNullPropagationForQueryMapping { get; set; }
+
+        /// <summary>
         /// Naming convention for source members
         /// </summary>
         INamingConvention SourceMemberNamingConvention { get; set; }
@@ -128,11 +134,23 @@ namespace AutoMapper
         /// <param name="configuration">configuration callback</param>
         void ForAllMaps(Action<TypeMap, IMappingExpression> configuration);
 
+        /// <summary>
+        /// Customize configuration for all members across all maps
+        /// </summary>
+        /// <param name="condition">Condition</param>
+        /// <param name="memberOptions">Callback for member options. Use the property map for conditional maps.</param>
+        void ForAllPropertyMaps(Func<PropertyMap, bool> condition, Action<PropertyMap, IMemberConfigurationExpression> memberOptions);
+
         Func<PropertyInfo, bool> ShouldMapProperty { get; set; }
         Func<FieldInfo, bool> ShouldMapField { get; set; }
         string ProfileName { get; }
         IMemberConfiguration AddMemberConfiguration();
         IConditionalObjectMapper AddConditionalObjectMapper();
+
+        /// <summary>
+        /// Include extension methods against source members for matching destination members to. Default source extension methods from <see cref="System.Linq.Enumerable"/>
+        /// </summary>
+        /// <param name="type">Static type that contains extension methods</param>
         void IncludeSourceExtensionMethods(Type type);
     }
 }

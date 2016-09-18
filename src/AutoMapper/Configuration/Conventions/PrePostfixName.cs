@@ -23,17 +23,18 @@ namespace AutoMapper.Configuration.Conventions
 
         public MemberInfo GetMatchingMemberInfo(IGetTypeInfoMembers getTypeInfoMembers, TypeDetails typeInfo, Type destType, Type destMemberType, string nameToSearch)
         {
-            var possibleSourceNames = PossibleNames(nameToSearch, DestinationPrefixes, DestinationPostfixes);
-            var possibleDestNames = getTypeInfoMembers.GetMemberInfos(typeInfo).Select(mi => new { mi, possibles = PossibleNames(mi.Name, Prefixes, Postfixes) });
+            var possibleSourceNames = DestinationPostfixes.Any() || DestinationPrefixes.Any()
+                ? PossibleNames(nameToSearch, DestinationPrefixes, DestinationPostfixes)
+                : new[] {nameToSearch};
 
             var all =
                 from sourceName in possibleSourceNames
-                from destName in possibleDestNames
+                from destName in typeInfo.DestinationMemberNames
                 select new { sourceName, destName };
             var match =
                 all.FirstOrDefault(
-                    pair => pair.destName.possibles.Any(p => string.Compare(p, pair.sourceName, StringComparison.OrdinalIgnoreCase) == 0));
-            return match?.destName.mi;
+                    pair => pair.destName.Possibles.Any(p => string.Compare(p, pair.sourceName, StringComparison.OrdinalIgnoreCase) == 0));
+            return match?.destName.Member;
         }
 
         private IEnumerable<string> PossibleNames(string memberName, IEnumerable<string> prefixes, IEnumerable<string> postfixes)
@@ -43,7 +44,7 @@ namespace AutoMapper.Configuration.Conventions
 
             yield return memberName;
 
-            foreach (var withoutPrefix in prefixes.Where(prefix => memberName.StartsWith(prefix, StringComparison.Ordinal)).Select(prefix => memberName.Substring(prefix.Length)))
+            foreach (var withoutPrefix in prefixes.Where(prefix => memberName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Select(prefix => memberName.Substring(prefix.Length)))
             {
                 yield return withoutPrefix;
                 foreach (var s in PostFixes(postfixes, withoutPrefix))
@@ -56,7 +57,7 @@ namespace AutoMapper.Configuration.Conventions
         private IEnumerable<string> PostFixes(IEnumerable<string> postfixes, string name)
         {
             return
-                postfixes.Where(postfix => name.EndsWith(postfix, StringComparison.Ordinal))
+                postfixes.Where(postfix => name.EndsWith(postfix, StringComparison.OrdinalIgnoreCase))
                     .Select(postfix => name.Remove(name.Length - postfix.Length));
         }
     }
